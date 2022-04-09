@@ -329,6 +329,20 @@ impl Node {
         None
     }
 
+    fn delete_child_by_node(&mut self, target_node: Rc<RefCell<Node>>) -> bool {
+        let mut iterator = self.children.iter();
+        let position = iterator.position(|r| {
+            (**r).borrow().value == (*target_node).borrow().value
+        });
+
+        if let Some(position) = position {
+            self.children.remove(position);
+            return true;
+        }
+
+        false
+    }
+
     fn replace_children(&mut self, old: Rc<RefCell<Node>>, new:Rc<RefCell<Node>>) {
         let mut iterator = self.children.iter();
 
@@ -342,6 +356,8 @@ impl Node {
             let last_index = self.children.len()-1;
             self.children.swap(index, last_index);
             self.children.remove(last_index);
+
+            (*new).borrow_mut().parent = (*old).borrow().clone().parent;
         }
     }
 
@@ -500,50 +516,53 @@ impl Tree {
         }
     }
 
+    fn find_nodes_by_value(&mut self, value:i32) -> Option<Rc<RefCell<Node>>> {
+        if let Some(root) = self.root.clone() {
+            let mut iterator = (*self.root.as_ref().unwrap().clone()).borrow_mut().iter(IterationType::Preorder);
+
+            return iterator.find(|r| {
+                (**r).borrow().value == value
+            });
+        }
+
+        None
+    }
+
+    fn deepest_node(&mut self) -> Option<Rc<RefCell<Node>>> {
+        if let Some(root) = self.root.clone() {
+            return (*root).borrow_mut().iter(IterationType::Preorder).first();
+        }
+
+        None
+    }
+
     /// delete 함수는 삭제되었다면 true를, 없는 값이라면 false를 리턴한다
     fn delete(&mut self, value:i32) -> bool {
         match self.root.clone() {
             Some(mut root) => {
-                let mut iterator = (*root).borrow_mut().iter(IterationType::Preorder);
+                let last_node = self.deepest_node();
+                let target_node = self.find_nodes_by_value(value);
 
-                let last_node = iterator.clone().first();
-                let target_index = iterator.clone().position(|r| {
-                    (*r).borrow().value == value
-                });
-
-                if last_node.is_none() || target_index.is_none() {
+                if last_node.is_none() || target_node.is_none() {
                     return false;
                 }
 
                 let last_node = last_node.unwrap();
 
-                let mut original_parent = (*last_node).borrow_mut().clone().parent;
-                // TODO: algorithm order is wrong. should be swap -> remove.
-                if original_parent.is_some() {
-                    // TODO: original_parent.delete(last_node);
-                    let mut original_parent = original_parent.unwrap();
-                    let mut original_parent = (*original_parent).borrow_mut();
-
-                    let last_node_value = (*last_node).borrow().value;
-                    original_parent.borrow_mut().delete_child_by_value(last_node_value);
+                if let Some(mut parent) = (*last_node).borrow().clone().parent {
+                    (*parent).borrow_mut().delete_child_by_node(last_node.clone());
                 }
 
-                let target_index = iterator.len() - target_index.unwrap() - 1;
-                let mut target_node = iterator.borrow_mut().routes[target_index].clone();
+                let target_node = target_node.unwrap();
 
-                let mut new_parent = (*target_node).borrow().clone().parent;
-                (*last_node).borrow_mut().parent = new_parent.clone();
-
-                new_parent.map(|parent| {
-                    (*parent).borrow_mut().delete_child((*target_node).borrow().value);
+                if let Some(mut parent) = (*target_node).borrow().clone().parent {
                     (*parent).borrow_mut().replace_children(target_node.clone(), last_node.clone());
-                });
+                }
 
                 (*last_node).borrow_mut().children = (*target_node).borrow().children.clone();
 
-                // TODO: target_node.children.set_parent(last_node);
-                let ln = (*target_node).borrow();
-                let mut children_iter = ln.children.iter();
+                let children = (*target_node).borrow_mut().children.clone();
+                let mut children_iter = children.iter();
                 while let Some(c) = children_iter.next() {
                     (**c).borrow_mut().parent = Some(last_node.clone());
                 }
