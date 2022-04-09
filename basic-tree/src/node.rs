@@ -9,6 +9,7 @@ use std::rc::Rc;
 #[cfg(test)]
 mod tests {
     use std::borrow::Borrow;
+    use std::i32::MAX;
     use crate::node::IterationType::{Postorder, Preorder};
     use crate::node::{Node, Tree};
 
@@ -240,6 +241,93 @@ mod tests {
         }
 
         let expect: &[i32] = &[1,7,4,5,3,6];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    fn delete_from_tree_with_non_exists_value() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+        tree.add(2);
+        tree.add(3);
+
+        let is_deleted = tree.delete(i32::MAX);
+
+        assert_eq!(false, is_deleted);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[1,2,3];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    fn delete_from_empty_tree() {
+        let mut tree = Tree::new();
+
+        let is_deleted = tree.delete(0);
+
+        assert_eq!(false, is_deleted);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    fn delete_from_tree_with_single_node_exists() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+
+        let is_deleted = tree.delete(1);
+
+        assert_eq!(true, is_deleted);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    fn delete_from_tree_multiple_times_until_empty_tree() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+        tree.add(2);
+        tree.add(3);
+
+        let is_deleted = tree.delete(1);
+        assert_eq!(true, is_deleted);
+
+        let is_deleted = tree.delete(3);
+        assert_eq!(true, is_deleted);
+
+        let is_deleted = tree.delete(2);
+        assert_eq!(true, is_deleted);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[];
         assert_eq!(Vec::from(expect), actual);
     }
 }
